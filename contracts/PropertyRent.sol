@@ -32,4 +32,33 @@ contract PropertyRent {
 
         emit RentPaid(msg.sender, msg.value);
     }
+
+    function resetRentState() private {
+        tenant = address(0);
+        isRented = false;
+        rentDeposit = 0;
+    }
+
+    function cancelRent() public {
+        require(msg.sender == tenant, "Only the tenant can cancel the rent.");
+        require(isRented, "Property is not rented.");
+
+        uint256 refundAmount = rentDeposit / 2;
+        payable(tenant).transfer(refundAmount);
+        payable(owner).transfer(rentDeposit - refundAmount);
+
+        resetRentState();
+        emit RentCancelled(tenant, refundAmount);
+    }
+
+    function releaseRentToOwner() public {
+        require(msg.sender == owner, "Only the owner can release the rent.");
+        require(isRented, "Property is not rented.");
+
+        uint256 amount = rentDeposit;
+        payable(owner).transfer(amount);
+
+        resetRentState();
+        emit RentReleased(owner, amount);
+    }
 }
