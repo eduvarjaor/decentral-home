@@ -1,3 +1,3 @@
 # Decentral Home
 
-🚧 Em construção...🚧
+🚧 Building...🚧
