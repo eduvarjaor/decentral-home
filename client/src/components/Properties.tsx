@@ -1,4 +1,3 @@
-'use client';
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { parseUnits } from '@ethersproject/units';
@@ -20,7 +19,11 @@ interface Property {
     image: StaticImageData;
 }
 
-const Properties = () => {
+interface PropertiesProps {
+    isWalletConnected: boolean;
+}
+
+const Properties = ({ isWalletConnected }: PropertiesProps) => {
     const [selectedProperty, setSelectedProperty] = useState<
         Property | undefined
     >(undefined);
@@ -35,6 +38,10 @@ const Properties = () => {
     };
 
     const handleRentClick = (property: Property) => {
+        if (!isWalletConnected) {
+            alert('Please connect to MetaMask.');
+            return;
+        }
         setSelectedProperty(property);
         setIsModalOpen(true);
     };
