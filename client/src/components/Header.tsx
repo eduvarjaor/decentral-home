@@ -1,5 +1,4 @@
-'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import metamask from '/public/metamask.png';
 
@@ -14,9 +13,12 @@ declare global {
     }
 }
 
-function Header() {
-    const [isWalletConnected, setIsWalletConnected] = useState(false);
+interface HeaderProps {
+    isWalletConnected: boolean;
+    setIsWalletConnected: React.Dispatch<React.SetStateAction<boolean>>;
+}
 
+function Header({ isWalletConnected, setIsWalletConnected }: HeaderProps) {
     async function connectWallet(): Promise<void> {
         if (window.ethereum) {
             try {
