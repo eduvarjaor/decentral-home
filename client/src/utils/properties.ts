@@ -2,6 +2,8 @@ import apartament1 from '/public/apartament1.jpg';
 import apartament2 from '/public/apartament2.jpg';
 import apartament3 from '/public/apartament3.jpg';
 import apartament4 from '/public/apartament4.jpg';
+import apartament5 from '/public/apartament5.jpg';
+import apartament6 from '/public/apartament6.jpg';
 
 export const properties = [
     {
@@ -31,5 +33,19 @@ export const properties = [
         description:
             'Cozy 2-bedroom with stylish wood accents and a homely feel.',
         image: apartament4,
+    },
+    {
+        id: 5,
+        title: 'Seaside Serenity',
+        description:
+            'Modern 1-bedroom with stunning ocean views and chic decor.',
+        image: apartament5,
+    },
+    {
+        id: 6,
+        title: 'Cozy Retreat with Sauna',
+        description:
+            'Comfortable 1-bedroom with a private sauna and picturesque balcony.',
+        image: apartament6,
     },
 ];
