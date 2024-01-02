@@ -1,20 +1,26 @@
 require("dotenv").config();
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
-const mnemonic = process.env.MNEMONIC;
-
 module.exports = {
+    plugins: ["truffle-plugin-verify"],
+    api_keys: {
+        bscscan: process.env.BSCSCAN_API_KEY,
+    },
     networks: {
         bsctest: {
-            network_id: "5777",
+            network_id: "97",
             provider: () =>
                 new HDWalletProvider({
                     mnemonic: {
-                        phrase: mnemonic,
+                        phrase: process.env.MNEMONIC,
                     },
                     providerOrUrl:
-                        "https://data-seed-prebsc-1-s1.binance.org:8545",
+                        "https://data-seed-prebsc-1-s1.bnbchain.org:8545",
                 }),
+            gasPrice: 10000000000,
+            confirmations: 10,
+            timeoutBlocks: 200,
+
             skipDryRun: true,
         },
     },
