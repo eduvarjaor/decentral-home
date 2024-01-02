@@ -30,6 +30,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [minDate, setMinDate] = useState(new Date());
 
     const closeModal = () => {
         setStartDate(null);
@@ -159,6 +160,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                 selectsStart
                                 startDate={startDate}
                                 endDate={endDate}
+                                minDate={minDate}
                                 className="bg-slate-200 p-2 rounded-md"
                             />
                             <DatePicker
