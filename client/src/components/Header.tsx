@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import metamask from '/public/metamask.png';
+import { HeaderProps } from '@/interfaces/HeaderProps';
 
 declare global {
     interface Window {
@@ -11,11 +12,6 @@ declare global {
             }) => Promise<any>;
         };
     }
-}
-
-interface HeaderProps {
-    isWalletConnected: boolean;
-    setIsWalletConnected: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 function Header({ isWalletConnected, setIsWalletConnected }: HeaderProps) {
