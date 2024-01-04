@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { parseUnits } from '@ethersproject/units';
-import { properties } from '@/utils/properties';
 import { contractABI } from '@/utils/contractABI';
 import { StaticImageData } from 'next/image';
+import moment from 'moment';
 import Image from 'next/image';
 import Modal from 'react-modal';
+import metamask from '/public/metamask.png';
 import bnbLogo from '/public/bnb-logo.png';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+
+import apartment1 from '/public/apartment1.jpg';
+import apartment2 from '/public/apartment2.jpg';
+import apartment3 from '/public/apartment3.jpg';
+import apartment4 from '/public/apartment4.jpg';
+import apartment5 from '/public/apartment5.jpg';
+import apartment6 from '/public/apartment6.jpg';
 
 Modal.setAppElement('#page');
 
@@ -17,6 +25,14 @@ interface Property {
     title: string;
     description: string;
     image: StaticImageData;
+    isRented: boolean;
+}
+
+interface ContractProperty {
+    id: ethers.BigNumberish;
+    title: string;
+    description: string;
+    isRented: boolean;
 }
 
 interface PropertiesProps {
@@ -31,12 +47,22 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [minDate, setMinDate] = useState(new Date());
+    const [properties, setProperties] = useState<Property[]>([]);
+    const [refetchProperties, setRefetchProperties] = useState(false);
+
+    useEffect(() => {
+        if (isWalletConnected) {
+            fetchProperties();
+        }
+    }, [isWalletConnected, refetchProperties]);
 
     const closeModal = () => {
         setStartDate(null);
         setEndDate(null);
         setIsModalOpen(false);
     };
+
+    const contractAddress = '0xbF26eFa094C4Dc2d827A2Ce65A6aA4E5A11d7dB3';
 
     const handleRentClick = (property: Property) => {
         if (!isWalletConnected) {
@@ -53,11 +79,18 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
             return;
         }
 
+        if (!startDate || !endDate) {
+            alert('Please select valid start and end dates.');
+            return;
+        }
+
+        const rentStartTimeUTC = moment.utc(startDate).unix();
+        const rentEndTimeUTC = moment.utc(endDate).unix();
+
         const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
         const signer = await provider.getSigner();
 
-        const contractAddress = '0xe5dD9313397e8D31A8CD49BA03746d619cdA7825';
+        const rentValue = parseUnits('0.01', 'ether').toString();
 
         const contract = new ethers.Contract(
             contractAddress,
@@ -65,31 +98,91 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
             signer
         );
 
-        const rentDuration = (endDate.getTime() - startDate.getTime()) / 1000;
-        const rentValue = parseUnits('0.01', 'ether');
-
         try {
-            const transaction = await contract.rent(rentDuration, {
-                value: rentValue,
-            });
-            await transaction.wait();
-            console.log('Rent successful');
+            const transaction = await contract.rent(
+                selectedProperty.id,
+                rentStartTimeUTC,
+                rentEndTimeUTC,
+                {
+                    value: rentValue,
+                }
+            );
 
-            // Chame outras funções do contrato se necessário
-            // Por exemplo, registrar o aluguel
+            const receipt = await transaction.wait();
+            setRefetchProperties((prev) => !prev);
+            alert(`Rent successful: ${receipt}`);
+            setIsModalOpen(false);
         } catch (error) {
             console.error('Error while renting:', error);
         }
     };
 
+    const fetchProperties = async () => {
+        if (!window.ethereum) {
+            console.error('Ethereum object not found');
+            return;
+        }
+
+        const images = [
+            apartment1,
+            apartment2,
+            apartment3,
+            apartment4,
+            apartment5,
+            apartment6,
+        ];
+
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const contract = new ethers.Contract(
+                contractAddress,
+                contractABI,
+                provider
+            );
+
+            const propertiesFromContract = await contract.getProperties();
+
+            setProperties(
+                propertiesFromContract.map(
+                    (property: ContractProperty, index: number) => ({
+                        id: Number(property.id),
+                        title: property.title,
+                        description: property.description,
+                        image: images[index],
+                        isRented: property.isRented,
+                    })
+                )
+            );
+        } catch (error) {
+            console.error('Error fetching properties:', error);
+        }
+    };
+
     return (
         <div className="container mx-auto p-4 pt-8">
-            <div className="flex justify-center">
-                <h1 className="text-4xl font-bold mb-4">
-                    Available Properties
-                </h1>
-            </div>
+            {isWalletConnected && (
+                <div className="flex justify-center">
+                    <h1 className="text-4xl font-bold mb-4">
+                        Available Properties
+                    </h1>
+                </div>
+            )}
             <div className="flex flex-wrap">
+                {!isWalletConnected ? (
+                    <div className="flex flex-col w-full items-center justify-center min-h-[80vh]">
+                        <h1 className="text-4xl font-bold mb-4">
+                            Check the properties connecting the Metamask
+                        </h1>
+
+                        <Image
+                            src={metamask}
+                            alt="metamask-logo"
+                            className="w-[60vh] h-[60vh]"
+                        />
+                    </div>
+                ) : (
+                    ''
+                )}
                 {properties.map((property) => (
                     <div
                         key={property.id}
@@ -111,21 +204,30 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                     {property.description}
                                 </p>
                                 <div className="flex justify-center">
-                                    <button
-                                        onClick={() =>
-                                            handleRentClick(property)
-                                        }
-                                        className="text-white bg-black hover:bg-zinc-700 transition ease-in-out duration-150 px-6 py-2 rounded-md flex items-center"
-                                    >
-                                        <span className="text-sm font-bold mr-2">
-                                            0.01 tBNB
-                                        </span>
-                                        <Image
-                                            src={bnbLogo}
-                                            alt="BNB logo"
-                                            className="w-4 h-4"
-                                        />
-                                    </button>
+                                    {property.isRented ? (
+                                        <button
+                                            disabled
+                                            className="text-white bg-red-500 cursor-not-allowed px-6 py-2 rounded-md flex items-center"
+                                        >
+                                            Rented
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() =>
+                                                handleRentClick(property)
+                                            }
+                                            className="text-white bg-black hover:bg-zinc-700 transition ease-in-out duration-150 px-6 py-2 rounded-md flex items-center"
+                                        >
+                                            <span className="text-sm font-bold mr-2">
+                                                0.01 tBNB
+                                            </span>
+                                            <Image
+                                                src={bnbLogo}
+                                                alt="BNB logo"
+                                                className="w-4 h-4"
+                                            />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
