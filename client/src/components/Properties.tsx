@@ -1,43 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import { parseUnits } from '@ethersproject/units';
-import { contractABI } from '@/utils/contractABI';
-import { StaticImageData } from 'next/image';
-import moment from 'moment';
 import Image from 'next/image';
 import Modal from 'react-modal';
-import metamask from '/public/metamask.png';
-import bnbLogo from '/public/bnb-logo.png';
 import DatePicker from 'react-datepicker';
+import bnbLogo from '/public/bnb-logo.png';
+import metamask from '/public/metamask.png';
 import 'react-datepicker/dist/react-datepicker.css';
 
-import apartment1 from '/public/apartment1.jpg';
-import apartment2 from '/public/apartment2.jpg';
-import apartment3 from '/public/apartment3.jpg';
-import apartment4 from '/public/apartment4.jpg';
-import apartment5 from '/public/apartment5.jpg';
-import apartment6 from '/public/apartment6.jpg';
+import { Property } from '@/interfaces/Property';
+import { contractABI } from '@/utils/contractABI';
+import React, { useState, useEffect } from 'react';
+import { contractAddress } from '@/utils/contractAddress';
+import { handleRentClick } from '@/functions/handleRent';
+import { handleRentConfirm } from '@/functions/handleRent';
+import { fetchProperties } from '@/functions/fetchProperties';
+import { PropertiesProps } from '@/interfaces/PropertiesProps';
 
 Modal.setAppElement('#page');
-
-interface Property {
-    id: number;
-    title: string;
-    description: string;
-    image: StaticImageData;
-    isRented: boolean;
-}
-
-interface ContractProperty {
-    id: ethers.BigNumberish;
-    title: string;
-    description: string;
-    isRented: boolean;
-}
-
-interface PropertiesProps {
-    isWalletConnected: boolean;
-}
 
 const Properties = ({ isWalletConnected }: PropertiesProps) => {
     const [selectedProperty, setSelectedProperty] = useState<
@@ -52,9 +29,9 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
 
     useEffect(() => {
         if (isWalletConnected) {
-            fetchProperties();
+            fetchProperties(setProperties, window);
         }
-    }, [isWalletConnected, refetchProperties]);
+    }, [isWalletConnected, refetchProperties, setProperties]);
 
     const closeModal = () => {
         setStartDate(null);
@@ -62,100 +39,17 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
         setIsModalOpen(false);
     };
 
-    const contractAddress = '0xbF26eFa094C4Dc2d827A2Ce65A6aA4E5A11d7dB3';
-
-    const handleRentClick = (property: Property) => {
-        if (!isWalletConnected) {
-            alert('Please connect to MetaMask.');
-            return;
-        }
-        setSelectedProperty(property);
-        setIsModalOpen(true);
-    };
-
-    const handleRentConfirm = async () => {
-        if (!selectedProperty || !startDate || !endDate || !window.ethereum) {
-            console.error('Missing data or Ethereum not available');
-            return;
-        }
-
-        if (!startDate || !endDate) {
-            alert('Please select valid start and end dates.');
-            return;
-        }
-
-        const rentStartTimeUTC = moment.utc(startDate).unix();
-        const rentEndTimeUTC = moment.utc(endDate).unix();
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-
-        const rentValue = parseUnits('0.01', 'ether').toString();
-
-        const contract = new ethers.Contract(
+    const onRentConfirmClick = async () => {
+        await handleRentConfirm(
+            selectedProperty,
+            startDate,
+            endDate,
+            setRefetchProperties,
+            setIsModalOpen,
             contractAddress,
             contractABI,
-            signer
+            window
         );
-
-        try {
-            const transaction = await contract.rent(
-                selectedProperty.id,
-                rentStartTimeUTC,
-                rentEndTimeUTC,
-                {
-                    value: rentValue,
-                }
-            );
-
-            const receipt = await transaction.wait();
-            setRefetchProperties((prev) => !prev);
-            alert(`Rent successful: ${receipt}`);
-            setIsModalOpen(false);
-        } catch (error) {
-            console.error('Error while renting:', error);
-        }
-    };
-
-    const fetchProperties = async () => {
-        if (!window.ethereum) {
-            console.error('Ethereum object not found');
-            return;
-        }
-
-        const images = [
-            apartment1,
-            apartment2,
-            apartment3,
-            apartment4,
-            apartment5,
-            apartment6,
-        ];
-
-        try {
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const contract = new ethers.Contract(
-                contractAddress,
-                contractABI,
-                provider
-            );
-
-            const propertiesFromContract = await contract.getProperties();
-
-            setProperties(
-                propertiesFromContract.map(
-                    (property: ContractProperty, index: number) => ({
-                        id: Number(property.id),
-                        title: property.title,
-                        description: property.description,
-                        image: images[index],
-                        isRented: property.isRented,
-                    })
-                )
-            );
-        } catch (error) {
-            console.error('Error fetching properties:', error);
-        }
     };
 
     return (
@@ -214,7 +108,12 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                     ) : (
                                         <button
                                             onClick={() =>
-                                                handleRentClick(property)
+                                                handleRentClick(
+                                                    property,
+                                                    isWalletConnected,
+                                                    setSelectedProperty,
+                                                    setIsModalOpen
+                                                )
                                             }
                                             className="text-white bg-black hover:bg-zinc-700 transition ease-in-out duration-150 px-6 py-2 rounded-md flex items-center"
                                         >
@@ -284,7 +183,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                 Close
                             </button>
                             <button
-                                onClick={handleRentConfirm}
+                                onClick={onRentConfirmClick}
                                 disabled={!startDate || !endDate}
                                 className={`${
                                     !startDate || !endDate
