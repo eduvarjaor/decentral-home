@@ -103,6 +103,7 @@ contract PropertyRent {
 
         properties[propertyId].tenant = msg.sender;
         properties[propertyId].isRented = true;
+        properties[propertyId].rentDeposit = msg.value;
         properties[propertyId].rentStartTime = _rentStartTime;
         properties[propertyId].rentEndTime = _rentEndTime;
 
