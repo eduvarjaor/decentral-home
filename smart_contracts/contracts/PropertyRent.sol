@@ -59,32 +59,32 @@ contract PropertyRent {
 
     function initializeProperties() public {
         addProperty(
-            1,
+            0,
             "Panoramic City Views",
             "Airy 2-bedroom with ample natural light, in the city center."
         );
         addProperty(
-            2,
+            1,
             "Minimalist Urban Space",
             "Sleek 2-bedroom with modern design and integrated kitchen."
         );
         addProperty(
-            3,
+            2,
             "Luxury Urban Living",
             "2-bedroom combining luxury with a high-standard urban lifestyle."
         );
         addProperty(
-            4,
+            3,
             "Charming and Modern",
             "Cozy 2-bedroom with stylish wood accents and a homely feel."
         );
         addProperty(
-            5,
+            4,
             "Seaside Serenity",
             "Modern 1-bedroom with stunning ocean views and chic decor."
         );
         addProperty(
-            6,
+            5,
             "Cozy Retreat with Sauna",
             "Comfortable 1-bedroom with a private sauna and picturesque balcony."
         );
@@ -138,13 +138,16 @@ contract PropertyRent {
 
     function releaseRentToOwner(uint256 propertyId) private {
         Property storage property = properties[propertyId];
-        require(msg.sender == owner, "Only the owner can release the rent.");
-        require(property.isRented, "Property is not rented.");
 
-        uint256 amount = property.rentDeposit;
-        payable(owner).transfer(amount);
+        uint256 amountToOwner = (property.rentDeposit * 90) / 100;
+        payable(owner).transfer(amountToOwner);
 
         resetRentState(propertyId);
-        emit RentReleased(owner, amount);
+        emit RentReleased(owner, amountToOwner);
+    }
+
+    function endRent(uint256 propertyId) public {
+        releaseRentToOwner(propertyId);
+        resetRentState(propertyId);
     }
 }
