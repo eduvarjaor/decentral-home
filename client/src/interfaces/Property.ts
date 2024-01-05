@@ -6,4 +6,5 @@ export interface Property {
     description: string;
     image: StaticImageData;
     isRented: boolean;
+    rentEndTime: number;
 }
