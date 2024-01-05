@@ -5,7 +5,6 @@ import bnbLogo from '/public/bnb-logo.png';
 import metamask from '/public/metamask.png';
 import 'react-datepicker/dist/react-datepicker.css';
 
-import { ethers } from 'ethers';
 import { Property } from '@/interfaces/Property';
 import { contractABI } from '@/utils/contractABI';
 import React, { useState, useEffect } from 'react';
@@ -14,6 +13,7 @@ import { handleRentClick } from '@/functions/handleRent';
 import { handleRentConfirm } from '@/functions/handleRent';
 import { fetchProperties } from '@/functions/fetchProperties';
 import { PropertiesProps } from '@/interfaces/PropertiesProps';
+import { handleConfirmCancel } from '@/functions/handleCancel';
 
 Modal.setAppElement('#page');
 
@@ -54,65 +54,22 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
         );
     };
 
+    const onConfirmCancelClick = async () => {
+        await handleConfirmCancel(
+            selectedProperty,
+            setIsCancelModalOpen,
+            properties,
+            setProperties,
+            setRefetchProperties
+        );
+    };
+
     const handleRentCancel = () => {
         setIsCancelModalOpen(true);
     };
 
     const handleCloseCancelModal = () => {
         setIsCancelModalOpen(false);
-    };
-
-    const handleConfirmCancel = async () => {
-        if (!selectedProperty) return;
-
-        setIsCancelModalOpen(false);
-
-        if (!window.ethereum) {
-            console.error('Ethereum object not found in window');
-            return;
-        }
-
-        try {
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const signer = await provider.getSigner();
-            const contract = new ethers.Contract(
-                contractAddress,
-                contractABI,
-                signer
-            );
-
-            const userAddressChecksum = ethers.getAddress(
-                await signer.getAddress()
-            );
-
-            const propertyDetails = await contract.properties(
-                selectedProperty.id
-            );
-            const tenantAddressChecksum = ethers.getAddress(
-                propertyDetails.tenant
-            );
-
-            if (userAddressChecksum !== tenantAddressChecksum) {
-                console.error('Error: Only the tenant can cancel the rent.');
-                return;
-            }
-
-            const transaction = await contract.cancelRent(selectedProperty.id);
-            const receipt = await transaction.wait();
-
-            const updatedProperties = properties.map((property) => {
-                if (property.id === selectedProperty.id) {
-                    return { ...property, isRented: false };
-                }
-                return property;
-            });
-            setProperties(updatedProperties);
-            alert(`Rent successful. Transaction Hash: ${receipt.hash}`);
-        } catch (error) {
-            console.error('Error cancelling rent:', error);
-        }
-
-        setRefetchProperties(true);
     };
 
     return (
@@ -276,7 +233,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                         If you cancel, you will lose 50% of the rent deposit.
                     </h3>
                     <button
-                        onClick={handleConfirmCancel}
+                        onClick={onConfirmCancelClick}
                         className="bg-red-500 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline ease-in-out duration-300 mr-2"
                     >
                         Yes
