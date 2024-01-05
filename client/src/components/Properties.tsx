@@ -5,6 +5,7 @@ import bnbLogo from '/public/bnb-logo.png';
 import metamask from '/public/metamask.png';
 import 'react-datepicker/dist/react-datepicker.css';
 
+import { ethers } from 'ethers';
 import { Property } from '@/interfaces/Property';
 import { contractABI } from '@/utils/contractABI';
 import React, { useState, useEffect } from 'react';
@@ -22,10 +23,11 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
     >(undefined);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [minDate, setMinDate] = useState(new Date());
     const [properties, setProperties] = useState<Property[]>([]);
-    const [refetchProperties, setRefetchProperties] = useState(false);
+    const [refetchProperties, setRefetchProperties] = useState<boolean>(false);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
 
     useEffect(() => {
         if (isWalletConnected) {
@@ -50,6 +52,67 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
             contractABI,
             window
         );
+    };
+
+    const handleRentCancel = () => {
+        setIsCancelModalOpen(true);
+    };
+
+    const handleCloseCancelModal = () => {
+        setIsCancelModalOpen(false);
+    };
+
+    const handleConfirmCancel = async () => {
+        if (!selectedProperty) return;
+
+        setIsCancelModalOpen(false);
+
+        if (!window.ethereum) {
+            console.error('Ethereum object not found in window');
+            return;
+        }
+
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(
+                contractAddress,
+                contractABI,
+                signer
+            );
+
+            const userAddressChecksum = ethers.getAddress(
+                await signer.getAddress()
+            );
+
+            const propertyDetails = await contract.properties(
+                selectedProperty.id
+            );
+            const tenantAddressChecksum = ethers.getAddress(
+                propertyDetails.tenant
+            );
+
+            if (userAddressChecksum !== tenantAddressChecksum) {
+                console.error('Error: Only the tenant can cancel the rent.');
+                return;
+            }
+
+            const transaction = await contract.cancelRent(selectedProperty.id);
+            const receipt = await transaction.wait();
+
+            const updatedProperties = properties.map((property) => {
+                if (property.id === selectedProperty.id) {
+                    return { ...property, isRented: false };
+                }
+                return property;
+            });
+            setProperties(updatedProperties);
+            alert(`Rent successful. Transaction Hash: ${receipt.hash}`);
+        } catch (error) {
+            console.error('Error cancelling rent:', error);
+        }
+
+        setRefetchProperties(true);
     };
 
     return (
@@ -100,8 +163,8 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                 <div className="flex justify-center">
                                     {property.isRented ? (
                                         <button
-                                            disabled
-                                            className="text-white bg-red-500 cursor-not-allowed px-6 py-2 rounded-md flex items-center"
+                                            onClick={handleRentCancel}
+                                            className="text-white bg-red-500 hover:bg-red-600 duration-150 ease-in-out px-6 py-2 rounded-md flex items-center"
                                         >
                                             Rented
                                         </button>
@@ -196,6 +259,35 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                isOpen={isCancelModalOpen}
+                onRequestClose={handleCloseCancelModal}
+                contentLabel="Cancel Rent Confirmation"
+                className="max-w-lg w-full p-5 bg-white rounded shadow-xl mx-auto mt-10"
+                overlayClassName="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center"
+            >
+                <div className="text-center">
+                    <h2 className="text-xl font-semibold mb-4">
+                        Are you sure to cancel your rent?
+                    </h2>
+                    <h3 className="mb-5">
+                        If you cancel, you will lose 50% of the rent deposit.
+                    </h3>
+                    <button
+                        onClick={handleConfirmCancel}
+                        className="bg-red-500 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline ease-in-out duration-300 mr-2"
+                    >
+                        Yes
+                    </button>
+                    <button
+                        onClick={handleCloseCancelModal}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline ease-in-out duration-300"
+                    >
+                        No
+                    </button>
+                </div>
             </Modal>
         </div>
     );
