@@ -45,7 +45,7 @@ export const handleRentConfirm = async (
 
         const receipt = await transaction.wait();
         setRefetchProperties((prev) => !prev);
-        alert(`Rent successful: ${receipt}`);
+        alert(`Rent successful. Transaction Hash: ${receipt.hash}`);
         setIsModalOpen(false);
     } catch (error) {
         console.error('Error while renting:', error);
