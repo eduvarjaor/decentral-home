@@ -73,7 +73,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
     };
 
     return (
-        <div className="container mx-auto p-4 pt-8">
+        <div className="container mx-auto lg:p-4 lg:pt-8 xx:pt-8">
             {isWalletConnected && (
                 <div className="flex justify-center">
                     <h1 className="text-4xl font-bold mb-4">
@@ -81,17 +81,17 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                     </h1>
                 </div>
             )}
-            <div className="flex flex-wrap">
+            <div className="flex flex-wrap xx:space-y-5 md:space-y-0">
                 {!isWalletConnected ? (
                     <div className="flex flex-col w-full items-center justify-center min-h-[80vh]">
-                        <h1 className="text-4xl font-bold mb-4">
+                        <h1 className="lg:text-4xl font-bold mb-4 xx:text-2xl xx:text-center">
                             Check the properties connecting the Metamask
                         </h1>
 
                         <Image
                             src={metamask}
                             alt="metamask-logo"
-                            className="w-[60vh] h-[60vh]"
+                            className="lg:w-[60vh] lg:h-[60vh]"
                         />
                     </div>
                 ) : (
@@ -100,7 +100,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                 {properties.map((property) => (
                     <div
                         key={property.id}
-                        className="p-4 w-full md:w-1/2 lg:w-1/3"
+                        className="lg:p-4 w-full md:w-1/2 lg:w-1/3 xm:p-0"
                     >
                         <div className="h-full border-2 border-gray-200 border-opacity-60 rounded-lg overflow-hidden shadow-lg">
                             <Image
