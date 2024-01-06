@@ -18,8 +18,7 @@ const contract = new ethers.Contract(
 
 const gasPrice = ethers.parseUnits("10", "gwei");
 
-// 0 6 * * * - each day
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("0 6 * * *", async () => {
     try {
         console.log("Cron job started");
         const properties = await contract.getProperties();
