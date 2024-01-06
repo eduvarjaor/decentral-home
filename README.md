@@ -54,7 +54,7 @@ $ npm run dev
 
 ### Demonstration
 
-[Decentral Home](https://professionalvision.netlify.app/)
+[Decentral Home](https://decentral-home.vercel.app/)
 
 [Usage video](https://youtu.be/gEVVIANF1O8)
 

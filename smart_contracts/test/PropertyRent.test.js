@@ -6,14 +6,16 @@ contract("PropertyRent", function (accounts) {
     const rentDuration = 60 * 60 * 24;
     const owner = accounts[0];
     const tenant = accounts[1];
+    const nonTenant = accounts[2];
+    const propertyId = 0;
 
     beforeEach(async () => {
         rentContract = await PropertyRent.new(rentValue);
-
-        await rentContract.rent(rentDuration, {
-            from: tenant,
-            value: rentValue,
-        });
+        await rentContract.addProperty(
+            propertyId,
+            "Test Property",
+            "Description of Test Property"
+        );
     });
 
     it("should deploy correctly with the correct rent value", async () => {
@@ -24,43 +26,111 @@ contract("PropertyRent", function (accounts) {
         );
     });
 
-    it("should allow a tenant to pay a rent", async () => {
+    it("should allow a tenant to pay rent", async () => {
+        await rentContract.rent(propertyId, rentDuration, rentDuration + 1000, {
+            from: tenant,
+            value: rentValue,
+        });
+
+        let property = await rentContract.properties(propertyId);
+        assert.equal(property.isRented, true, "Property should be rented.");
         assert.equal(
-            await rentContract.isRented(),
-            true,
-            "Property should be rented."
-        );
-        assert.equal(
-            await rentContract.tenant(),
+            property.tenant,
             tenant,
             "Tenant should be set correctly."
         );
     });
 
-    it("should allow the tenant to cancel the rent", async () => {
-        const initialTenantBalance = await web3.eth.getBalance(tenant);
-        await rentContract.cancelRent({ from: tenant });
-        const newTenantBalance = await web3.eth.getBalance(tenant);
-
-        assert.isAbove(
-            Number(newTenantBalance),
-            Number(initialTenantBalance),
-            "Tenant should receive a refund."
+    it("should check initial property states", async () => {
+        let property = await rentContract.properties(propertyId);
+        assert.equal(
+            property.title,
+            "Test Property",
+            "Property title is incorrect."
         );
         assert.equal(
-            await rentContract.isRented(),
+            property.description,
+            "Description of Test Property",
+            "Property description is incorrect."
+        );
+        assert.equal(
+            property.isRented,
+            false,
+            "Property should not be rented initially."
+        );
+    });
+
+    it("should add a new property and verify it's added correctly", async () => {
+        const newPropertyId = 1;
+        await rentContract.addProperty(
+            newPropertyId,
+            "New Test Property",
+            "Description of New Test Property"
+        );
+
+        let newProperty = await rentContract.properties(newPropertyId);
+        assert.equal(
+            newProperty.title,
+            "New Test Property",
+            "New property title is incorrect."
+        );
+        assert.equal(
+            newProperty.description,
+            "Description of New Test Property",
+            "New property description is incorrect."
+        );
+    });
+
+    it("should allow owner to end rent", async () => {
+        await rentContract.rent(propertyId, rentDuration, rentDuration + 1000, {
+            from: tenant,
+            value: rentValue,
+        });
+
+        await rentContract.endRent(propertyId, { from: owner });
+
+        let property = await rentContract.properties(propertyId);
+        assert.equal(property.isRented, false, "Rent should be ended.");
+    });
+
+    it("should allow the tenant to cancel the rent", async () => {
+        await rentContract.rent(propertyId, rentDuration, rentDuration + 1000, {
+            from: tenant,
+            value: rentValue,
+        });
+
+        const initialTenantBalance = BigInt(await web3.eth.getBalance(tenant));
+        await rentContract.cancelRent(propertyId, { from: tenant });
+        const newTenantBalance = BigInt(await web3.eth.getBalance(tenant));
+
+        assert(
+            newTenantBalance > initialTenantBalance,
+            "Tenant should receive a refund."
+        );
+        let property = await rentContract.properties(propertyId);
+        assert.equal(
+            property.isRented,
             false,
             "Property should not be rented after cancellation."
         );
     });
 
     it("should prevent renting if already rented", async () => {
-        const secondTenant = accounts[2];
+        await rentContract.rent(propertyId, rentDuration, rentDuration + 1000, {
+            from: tenant,
+            value: rentValue,
+        });
+
         try {
-            await rentContract.rent(rentDuration, {
-                from: secondTenant,
-                value: rentValue,
-            });
+            await rentContract.rent(
+                propertyId,
+                rentDuration,
+                rentDuration + 1000,
+                {
+                    from: nonTenant,
+                    value: rentValue,
+                }
+            );
             assert.fail("Should not allow renting if already rented");
         } catch (error) {
             assert.include(
@@ -71,51 +141,20 @@ contract("PropertyRent", function (accounts) {
         }
     });
 
-    it("should allow owner to release rent", async () => {
-        await rentContract.releaseRentToOwner({ from: owner });
-
-        await rentContract.rent(rentDuration, {
+    it("should prevent non-tenant from canceling the rent", async () => {
+        await rentContract.rent(propertyId, rentDuration, rentDuration + 1000, {
             from: tenant,
             value: rentValue,
         });
 
-        const initialOwnerBalance = BigInt(await web3.eth.getBalance(owner));
-        await rentContract.releaseRentToOwner({ from: owner });
-
-        const newOwnerBalance = BigInt(await web3.eth.getBalance(owner));
-        assert(
-            newOwnerBalance > initialOwnerBalance,
-            "Owner should have received the rent"
-        );
-
-        const state = await rentContract.isRented();
-        assert.equal(state, false, "Rent state should be reset to false");
-    });
-
-    it("should prevent non-tenant from canceling the rent", async () => {
-        const nonTenant = accounts[2];
         try {
-            await rentContract.cancelRent({ from: nonTenant });
+            await rentContract.cancelRent(propertyId, { from: nonTenant });
             assert.fail("Should not allow non-tenant to cancel the rent");
         } catch (error) {
             assert.include(
                 error.message,
                 "Only the tenant can cancel the rent",
                 "Error should contain 'Only the tenant can cancel the rent'"
-            );
-        }
-    });
-
-    it("should prevent non-owner from releasing the rent", async () => {
-        const nonOwner = accounts[2];
-        try {
-            await rentContract.releaseRentToOwner({ from: nonOwner });
-            assert.fail("Should not allow non-owner to release the rent");
-        } catch (error) {
-            assert.include(
-                error.message,
-                "Only the owner can release the rent",
-                "Error should contain 'Only the owner can release the rent'"
             );
         }
     });
