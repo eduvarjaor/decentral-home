@@ -1,6 +1,6 @@
-# Decentral Home - web 3.0.
+# Decentral Home - web 3.0
 
-![Usage](client/public/Usage.gif)
+![Usage](public/Usage.gif)
 
 ### About
 
@@ -19,11 +19,11 @@ This dapp harnesses the power of blockchain technology to create a decentralized
 ### Layout
 
 <p align="center">
-  <img src="client/public/PC.png" alt="PC">
+  <img src="public/PC.png" alt="PC">
 </p>
 
 <p align="center">
-  <img src="client/public/Phone.png" alt="Phone">
+  <img src="public/Phone.png" alt="Phone">
 </p>
 
 ### Requirements
@@ -50,7 +50,7 @@ $ npm run dev
 
 ### Workflow
 
-![Workflow](client/public/workflow.png)
+![Workflow](public/workflow.png)
 
 ### Demonstration
 
