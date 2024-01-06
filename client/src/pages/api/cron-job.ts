@@ -3,9 +3,9 @@ import { contractABI } from '@/utils/contractABI';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { contractAddress } from '@/utils/contractAddress';
 
-//https://bsc-testnet.publicnode.com
-
-const provider = new ethers.JsonRpcProvider('http://127.0.0.1:7545');
+const provider = new ethers.JsonRpcProvider(
+    'https://bsc-testnet.publicnode.com'
+);
 const privateKey = process.env.PRIVATE_KEY || '';
 const wallet = new ethers.Wallet(privateKey, provider);
 const contract = new ethers.Contract(
