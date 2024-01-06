@@ -3,7 +3,6 @@ import { contractABI } from '@/utils/contractABI';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { contractAddress } from '@/utils/contractAddress';
 
-require('dotenv').config();
 //https://bsc-testnet.publicnode.com
 
 const provider = new ethers.JsonRpcProvider('http://127.0.0.1:7545');
