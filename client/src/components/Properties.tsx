@@ -1,27 +1,21 @@
-import React, { useState } from 'react';
-import { ethers } from 'ethers';
-import { parseUnits } from '@ethersproject/units';
-import { properties } from '@/utils/properties';
-import { contractABI } from '@/utils/contractABI';
-import { StaticImageData } from 'next/image';
 import Image from 'next/image';
 import Modal from 'react-modal';
-import bnbLogo from '/public/bnb-logo.png';
 import DatePicker from 'react-datepicker';
+import bnbLogo from '/public/bnb-logo.png';
+import metamask from '/public/metamask.png';
 import 'react-datepicker/dist/react-datepicker.css';
 
+import { Property } from '@/interfaces/Property';
+import { contractABI } from '@/utils/contractABI';
+import React, { useState, useEffect } from 'react';
+import { contractAddress } from '@/utils/contractAddress';
+import { handleRentClick } from '@/functions/handleRent';
+import { handleRentConfirm } from '@/functions/handleRent';
+import { fetchProperties } from '@/functions/fetchProperties';
+import { PropertiesProps } from '@/interfaces/PropertiesProps';
+import { handleConfirmCancel } from '@/functions/handleCancel';
+
 Modal.setAppElement('#page');
-
-interface Property {
-    id: number;
-    title: string;
-    description: string;
-    image: StaticImageData;
-}
-
-interface PropertiesProps {
-    isWalletConnected: boolean;
-}
 
 const Properties = ({ isWalletConnected }: PropertiesProps) => {
     const [selectedProperty, setSelectedProperty] = useState<
@@ -29,7 +23,17 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
     >(undefined);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [minDate, setMinDate] = useState(new Date());
+    const [properties, setProperties] = useState<Property[]>([]);
+    const [refetchProperties, setRefetchProperties] = useState<boolean>(false);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (isWalletConnected) {
+            fetchProperties(setProperties, window);
+        }
+    }, [isWalletConnected, refetchProperties, setProperties]);
 
     const closeModal = () => {
         setStartDate(null);
@@ -37,62 +41,66 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
         setIsModalOpen(false);
     };
 
-    const handleRentClick = (property: Property) => {
-        if (!isWalletConnected) {
-            alert('Please connect to MetaMask.');
-            return;
-        }
-        setSelectedProperty(property);
-        setIsModalOpen(true);
-    };
-
-    const handleRentConfirm = async () => {
-        if (!selectedProperty || !startDate || !endDate || !window.ethereum) {
-            console.error('Missing data or Ethereum not available');
-            return;
-        }
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        const signer = await provider.getSigner();
-
-        const contractAddress = '0xe5dD9313397e8D31A8CD49BA03746d619cdA7825';
-
-        const contract = new ethers.Contract(
+    const onRentConfirmClick = async () => {
+        await handleRentConfirm(
+            selectedProperty,
+            startDate,
+            endDate,
+            setRefetchProperties,
+            setIsModalOpen,
             contractAddress,
             contractABI,
-            signer
+            window
         );
+    };
 
-        const rentDuration = (endDate.getTime() - startDate.getTime()) / 1000;
-        const rentValue = parseUnits('0.01', 'ether');
+    const onConfirmCancelClick = async () => {
+        await handleConfirmCancel(
+            selectedProperty,
+            setIsCancelModalOpen,
+            properties,
+            setProperties,
+            setRefetchProperties
+        );
+    };
 
-        try {
-            const transaction = await contract.rent(rentDuration, {
-                value: rentValue,
-            });
-            await transaction.wait();
-            console.log('Rent successful');
+    const handleRentCancel = () => {
+        setIsCancelModalOpen(true);
+    };
 
-            // Chame outras funções do contrato se necessário
-            // Por exemplo, registrar o aluguel
-        } catch (error) {
-            console.error('Error while renting:', error);
-        }
+    const handleCloseCancelModal = () => {
+        setIsCancelModalOpen(false);
     };
 
     return (
-        <div className="container mx-auto p-4 pt-8">
-            <div className="flex justify-center">
-                <h1 className="text-4xl font-bold mb-4">
-                    Available Properties
-                </h1>
-            </div>
-            <div className="flex flex-wrap">
+        <div className="container mx-auto lg:p-4 lg:pt-8 xx:pt-8">
+            {isWalletConnected && (
+                <div className="flex justify-center">
+                    <h1 className="text-4xl font-bold mb-4">
+                        Available Properties
+                    </h1>
+                </div>
+            )}
+            <div className="flex flex-wrap xx:space-y-5 md:space-y-0">
+                {!isWalletConnected ? (
+                    <div className="flex flex-col w-full items-center justify-center min-h-[80vh]">
+                        <h1 className="lg:text-4xl font-bold mb-4 xx:text-2xl xx:text-center">
+                            Check the properties connecting the Metamask
+                        </h1>
+
+                        <Image
+                            src={metamask}
+                            alt="metamask-logo"
+                            className="lg:w-[60vh] lg:h-[60vh]"
+                        />
+                    </div>
+                ) : (
+                    ''
+                )}
                 {properties.map((property) => (
                     <div
                         key={property.id}
-                        className="p-4 w-full md:w-1/2 lg:w-1/3"
+                        className="lg:p-4 w-full md:w-1/2 lg:w-1/3 xm:p-0"
                     >
                         <div className="h-full border-2 border-gray-200 border-opacity-60 rounded-lg overflow-hidden shadow-lg">
                             <Image
@@ -110,21 +118,35 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                     {property.description}
                                 </p>
                                 <div className="flex justify-center">
-                                    <button
-                                        onClick={() =>
-                                            handleRentClick(property)
-                                        }
-                                        className="text-white bg-black hover:bg-zinc-700 transition ease-in-out duration-150 px-6 py-2 rounded-md flex items-center"
-                                    >
-                                        <span className="text-sm font-bold mr-2">
-                                            0.01 tBNB
-                                        </span>
-                                        <Image
-                                            src={bnbLogo}
-                                            alt="BNB logo"
-                                            className="w-4 h-4"
-                                        />
-                                    </button>
+                                    {property.isRented ? (
+                                        <button
+                                            onClick={handleRentCancel}
+                                            className="text-white bg-red-500 hover:bg-red-600 duration-150 ease-in-out px-6 py-2 rounded-md flex items-center"
+                                        >
+                                            Rented
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() =>
+                                                handleRentClick(
+                                                    property,
+                                                    isWalletConnected,
+                                                    setSelectedProperty,
+                                                    setIsModalOpen
+                                                )
+                                            }
+                                            className="text-white bg-black hover:bg-zinc-700 transition ease-in-out duration-150 px-6 py-2 rounded-md flex items-center"
+                                        >
+                                            <span className="text-sm font-bold mr-2">
+                                                0.01 tBNB
+                                            </span>
+                                            <Image
+                                                src={bnbLogo}
+                                                alt="BNB logo"
+                                                className="w-4 h-4"
+                                            />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -159,6 +181,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                 selectsStart
                                 startDate={startDate}
                                 endDate={endDate}
+                                minDate={minDate}
                                 className="bg-slate-200 p-2 rounded-md"
                             />
                             <DatePicker
@@ -180,7 +203,7 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                                 Close
                             </button>
                             <button
-                                onClick={handleRentConfirm}
+                                onClick={onRentConfirmClick}
                                 disabled={!startDate || !endDate}
                                 className={`${
                                     !startDate || !endDate
@@ -193,6 +216,35 @@ const Properties = ({ isWalletConnected }: PropertiesProps) => {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                isOpen={isCancelModalOpen}
+                onRequestClose={handleCloseCancelModal}
+                contentLabel="Cancel Rent Confirmation"
+                className="max-w-lg w-full p-5 bg-white rounded shadow-xl mx-auto mt-10"
+                overlayClassName="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center"
+            >
+                <div className="text-center">
+                    <h2 className="text-xl font-semibold mb-4">
+                        Are you sure to cancel your rent?
+                    </h2>
+                    <h3 className="mb-5">
+                        If you cancel, you will lose 50% of the rent deposit.
+                    </h3>
+                    <button
+                        onClick={onConfirmCancelClick}
+                        className="bg-red-500 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline ease-in-out duration-300 mr-2"
+                    >
+                        Yes
+                    </button>
+                    <button
+                        onClick={handleCloseCancelModal}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline ease-in-out duration-300"
+                    >
+                        No
+                    </button>
+                </div>
             </Modal>
         </div>
     );
