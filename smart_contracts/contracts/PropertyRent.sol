@@ -110,7 +110,7 @@ contract PropertyRent {
         emit RentPaid(msg.sender, msg.value);
     }
 
-    function resetRentState(uint256 propertyId) public {
+    function resetRentState(uint256 propertyId) private {
         Property storage property = properties[propertyId];
 
         property.tenant = address(0);
